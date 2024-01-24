@@ -1,26 +1,25 @@
 'use strict'
 
-/*
-|--------------------------------------------------------------------------
-| Routes
-|--------------------------------------------------------------------------
-|
-| Http routes are entry points to your web application. You can create
-| routes for different URLs and bind Controller actions to them.
-|
-| A complete guide on routing is available here.
-| http://adonisjs.com/docs/4.1/routing
-|
-*/
+const Route = use('@adonisjs/framework/src/Route/Manager')
 
-/** @type {typeof import('@adonisjs/framework/src/Route/Manager')} */
-const Route = use('Route')
+Route.get('/', () => {
+  return { greeting: 'Hello World: BeMobile - Desafio Backend' }
+})
 
-Route.post('/user', 'AuthController.register')
-Route.post('/auth', 'AuthController.authenticate')
+Route.post('user', 'AuthController.register')
+Route.post('auth', 'AuthController.authenticate')
 
 Route.post('book', 'BooksController.store')
 Route.get('books', 'BooksController.index')
 Route.get('book/:id', 'BooksController.show')
 Route.put('book/:id', 'BooksController.update')
 Route.delete('book/:id', 'BooksController.destroy')
+
+Route.post('client', 'ClientsController.store')
+Route.get('clients', 'ClientsController.index')
+Route.get('client/:id', 'ClientsController.show')
+Route.put('client/:id', 'ClientsController.update')
+Route.get('client/detail/:id', 'ClientsController.detail')
+Route.delete('client/:id', 'ClientsController.destroy')
+
+Route.post('sale', 'SalesController.store')
