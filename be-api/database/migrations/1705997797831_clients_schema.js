@@ -8,7 +8,8 @@ class ClientsSchema extends Schema {
     this.create('clients', (table) => {
       table.increments()
       table.string('name', 80).notNullable().unique()
-      table.integer('cpf').notNullable().unique()
+      table.string('cpf').notNullable().unique()
+      table.integer('address_id').unsigned().references('id').inTable('addresses').onDelete('cascade')
       table.timestamps()
     })
   }

@@ -7,7 +7,7 @@ class PhoneNumbersSchema extends Schema {
   up () {
     this.create('phone_numbers', (table) => {
       table.increments()
-      table.string('number', 20).notNullable().unique()
+      table.string('number', 20).notNullable()
       table.integer('client_id').unsigned().references('id').inTable('clients').onDelete('cascade')
       table.timestamps()
     })
