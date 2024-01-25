@@ -4,10 +4,13 @@ const Client = use('App/Models/Client');
 const Sale = use('App/Models/Sale');
 const Address = use('App/Models/Address');
 const PhoneNumber = use('App/Models/PhoneNumber');
+const BaseController = use('App/Controllers/Http/BaseController');
+const InvalidJwtToken = use('App/Exceptions/InvalidJwtToken');
 
-class ClientsController {
-  async index({ response }) {
+class ClientsController extends BaseController {
+  async index({ response, auth }) {
     try {
+      await auth.check();
 
       const clients = await Client.query()
         .with('address')
@@ -19,30 +22,24 @@ class ClientsController {
         id: client.id,
         name: client.name,
         cpf: client.cpf,
-        address: client.address ? {
-          address: client.address.address,
-          number: client.address.number,
-          complement: client.address.complement,
-          city: client.address.city,
-          neighborhood: client.address.neighborhood,
-          state: client.address.state,
-          country: client.address.country,
-        } : null,
+        address: client.address ? { ...client.address } : null,
         phoneNumber: client.phoneNumber ? client.phoneNumber.number : null,
       }));
 
       return response.json(formattedClients);
     } catch (error) {
-      console.error('Error fetching clients:', error);
-      return response.status(500).json({
-        error: 'Internal Server Error',
-        message: 'Failed to fetch clients',
-      });
+      if (error instanceof InvalidJwtToken) {
+        throw error;
+      } else {
+        return this.handleErrorResponse(response, error, 401, 'Unauthorized');
+      }
     }
   }
 
-  async show({ params, request, response }) {
+  async show({ params, request, response, auth }) {
     try {
+      await auth.check();
+
       const client = await Client.query()
         .with('address')
         .with('phoneNumber')
@@ -50,7 +47,7 @@ class ClientsController {
         .firstOrFail();
 
       const { month, year } = request.only(['month', 'year']);
-  
+
       const salesQuery = Sale.query().where('client_id', client.id);
       if (month && year) {
         salesQuery.whereRaw('EXTRACT(MONTH FROM date) = ? AND EXTRACT(YEAR FROM date) = ?', [month, year]);
@@ -60,7 +57,7 @@ class ClientsController {
 
       const addressData = client.getRelated('address') || {};
       const phoneNumberData = client.getRelated('phoneNumber') || {};
-  
+
       return response.json({
         client: {
           id: client.id,
@@ -80,16 +77,18 @@ class ClientsController {
         sales,
       });
     } catch (error) {
-      console.error('Error fetching client details:', error);
-      return response.status(404).json({
-        error: 'Client not found',
-        message: 'Failed to fetch client details',
-      });
+      if (error instanceof InvalidJwtToken) {
+        throw error;
+      } else {
+        return this.handleErrorResponse(response, error, 401, 'Unauthorized');
+      }
     }
   }
 
-  async store({ request, response }) {
+  async store({ request, response, auth }) {
     try {
+      await auth.check();
+
       const {
         name,
         cpf,
@@ -118,9 +117,8 @@ class ClientsController {
         .where('name', name)
         .orWhere('cpf', cpf)
         .first();
-  
+
       if (existingClient) {
-        console.log('Duplicate entry found:', existingClient.toJSON());
         return response.status(400).json({
           error: 'Duplicate entry',
           message: 'A client with the provided data already exists.',
@@ -137,23 +135,17 @@ class ClientsController {
         country,
       });
 
-      console.log('Client Address created:', clientAddress.toJSON());
-
       const client = await Client.create({
         name,
         cpf,
         address_id: clientAddress.id,
       });
 
-      console.log('Client created:', client.toJSON());
-
       const clientPhoneNumber = await PhoneNumber.create({
         number: phoneNumber,
         client_id: client.id,
       });
-  
-      console.log('Client Phone Number created:', clientPhoneNumber.toJSON());
-  
+
       return response.status(201).json({
         message: 'Client created successfully',
         client: {
@@ -171,20 +163,22 @@ class ClientsController {
         },
       });
     } catch (error) {
-      console.error('Error creating client:', error);
-      return response.status(400).json({
-        error: error.message,
-        message: 'Failed to create client',
-      });
+      if (error instanceof InvalidJwtToken) {
+        throw error;
+      } else {
+        return this.handleErrorResponse(response, error, 401, 'Unauthorized');
+      }
     }
   }
 
-  async update({ params, request, response }) {
+  async update({ params, request, response, auth }) {
     try {
+      await auth.check();
+
       const client = await Client.findOrFail(params.id);
-    
+
       const updatedData = {};
-    
+
       const clientData = request.only(['name']);
       if (Object.keys(clientData).length > 0) {
         client.merge(clientData);
@@ -225,34 +219,36 @@ class ClientsController {
         phoneNumber: updatedData.phoneNumber,
       });
     } catch (error) {
-      console.error('Error updating client:', error);
-      return response.status(400).json({
-        error: error.message,
-        message: 'Failed to update client',
-      });
+      if (error instanceof InvalidJwtToken) {
+        throw error;
+      } else {
+        return this.handleErrorResponse(response, error, 401, 'Unauthorized');
+      }
     }
   }
 
-  async detail({ params, request, response }) {
+  async detail({ params, request, response, auth }) {
     try {
+      await auth.check();
+
       const client = await Client.query()
         .with('address')
         .with('phoneNumber')
         .where('id', params.id)
         .firstOrFail();
-  
+
       const { month, year } = request.only(['month', 'year']);
-  
+
       const salesQuery = Sale.query().where('client_id', client.id);
       if (month && year) {
         salesQuery.whereRaw('EXTRACT(MONTH FROM date) = ? AND EXTRACT(YEAR FROM date) = ?', [month, year]);
       }
-  
+
       const sales = await salesQuery.orderBy('date', 'desc').fetch();
-  
+
       const addressData = client.getRelated('address');
       const phoneNumberData = client.getRelated('phoneNumber');
-  
+
       return response.json({
         client: {
           id: client.id,
@@ -272,16 +268,18 @@ class ClientsController {
         sales,
       });
     } catch (error) {
-      console.error('Error fetching client details:', error);
-      return response.status(404).json({
-        error: 'Client not found',
-        message: 'Failed to fetch client details',
-      });
+      if (error instanceof InvalidJwtToken) {
+        throw error;
+      } else {
+        return this.handleErrorResponse(response, error, 401, 'Unauthorized');
+      }
     }
   }
 
-  async destroy({ params, response }) {
+  async destroy({ params, response, auth }) {
     try {
+      await auth.check();
+
       const client = await Client.findOrFail(params.id);
 
       await Sale.query().where('client_id', client.id).delete();
@@ -292,12 +290,11 @@ class ClientsController {
         message: 'Client deleted successfully',
       });
     } catch (error) {
-      console.error('Error deleting client:', error);
-
-      return response.status(404).json({
-        error: 'Client not found',
-        message: 'Failed to delete client',
-      });
+      if (error instanceof InvalidJwtToken) {
+        throw error;
+      } else {
+        return this.handleErrorResponse(response, error, 401, 'Unauthorized');
+      }
     }
   }
 }
